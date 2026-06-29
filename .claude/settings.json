@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /home/mauricio/projects/ruleta/ruleta status)",
+      "Bash(gh auth *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('name','ruleta'\\), d.get\\('description',''\\)\\)\")",
+      "Bash(git init *)"
+    ]
+  }
+}
