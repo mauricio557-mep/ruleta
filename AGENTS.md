@@ -16,7 +16,7 @@ Build runs `tsc -b` first; a TS error blocks the bundle. Lint and build are inde
 
 ## Architecture (do not refactor without intent)
 
-- `src/App.tsx` is the whole game (~1160 lines). Contains: `CONFIG`, types, `WHEEL` order, `betDef`, RNG (`spinMath`/`spinSecure`), `useRouletteAudio` hook, the `reducer`, `WheelContents` SVG, and the `App` component with the betting table.
+- `src/App.tsx` is the whole game (~1250+ lines). Contains: `CONFIG`, types, `WHEEL` order, `betDef`, RNG, `useRouletteAudio`, the `reducer`, `WheelContents` SVG, the betting table, and controls (incl. Rebet / Double / Pause).
 - `src/index.css` holds Tailwind directives plus a hardcoded `.win-modal` animation (4s). Do not move that animation into Tailwind config — the inline `style={{ animationDuration }}` approach previously used kept the modal stuck at `opacity: 0`.
 - No router, no context, no store. All state via `useReducer` in `App`. Transitions driven by `useEffect([phase, paused])` with a shared `timersRef` for cleanup.
 
@@ -54,6 +54,20 @@ For consecutive spins the wheel `transform` must be reset to the previous angle 
 - Money formatted via `Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" })`.
 - Chip denominations are AR$ 250 / 500 / 1k / 5k; chip color classes live in `chipClasses(value)` in `App.tsx`.
 - Outside-bet chips render in the top-right corner of the button (`chipSpotCorner`) so the label stays readable; in-board bet chips render centered.
+
+## Rebet / Double
+
+Implemented as reducer actions (`REBET`, `DOUBLE`):
+
+- `lastBets` is snapshotted into state when bets are confirmed (`NO_MORE_BETS`).
+- Rebet places every bet from `lastBets`, adding to existing bets and skipping any that would exceed current saldo. Never negative.
+- Double doubles each current bet atomically; if saldo is insufficient for the full new total, the action is a no-op.
+- Both are disabled unless `phase === "BETTING"`.
+
+## Hard constraints
+
+- `saldo` can never go negative. Every financial action validates against available balance.
+- Bets can only be modified in `BETTING` phase.
 
 ## What to verify before declaring done
 

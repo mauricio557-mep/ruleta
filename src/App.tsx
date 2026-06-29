@@ -47,6 +47,8 @@ type State = {
   selectedChip: number;
   paused: boolean;
   message: string;
+  // Apuesta confirmada en la última ronda (para Repetir).
+  lastBets: Record<string, number>;
 };
 
 type Action =
@@ -55,6 +57,8 @@ type Action =
   | { type: "SELECT_CHIP"; chip: number }
   | { type: "RECHARGE"; amount: number }
   | { type: "TOGGLE_PAUSE" }
+  | { type: "REBET" }
+  | { type: "DOUBLE" }
   | { type: "TICK" }
   | { type: "SET_PHASE"; phase: Phase; timeLeft?: number }
   | { type: "SET_WINNER"; winner: number }
@@ -276,6 +280,7 @@ const initialState: State = {
   selectedChip: CONFIG.FICHAS[0],
   paused: false,
   message: "Apuestas abiertas",
+  lastBets: {},
 };
 
 function reducer(state: State, action: Action): State {
@@ -330,9 +335,15 @@ function reducer(state: State, action: Action): State {
     }
 
     case "SET_PHASE": {
+      // Al confirmar apuestas (entrar a NO_MORE_BETS) guardamos una copia para "Repetir".
+      const snapshotLastBets =
+        action.phase === "NO_MORE_BETS" && state.bets.length > 0
+          ? Object.fromEntries(state.bets.map((b) => [b.id, b.amount]))
+          : state.lastBets;
       return {
         ...state,
         phase: action.phase,
+        lastBets: snapshotLastBets,
         timeLeft:
           action.timeLeft ??
           (action.phase === "BETTING"
@@ -394,7 +405,82 @@ function reducer(state: State, action: Action): State {
 
     case "SPIN_NOW": {
       if (state.phase !== "BETTING" || state.totalBet === 0) return state;
-      return { ...state, phase: "NO_MORE_BETS", timeLeft: CONFIG.TIEMPO_NO_VA_MAS, message: "No va más" };
+      // Snapshot para Repetir.
+      const snapshot = Object.fromEntries(state.bets.map((b) => [b.id, b.amount]));
+      return {
+        ...state,
+        phase: "NO_MORE_BETS",
+        timeLeft: CONFIG.TIEMPO_NO_VA_MAS,
+        message: "No va más",
+        lastBets: snapshot,
+      };
+    }
+
+    case "REBET": {
+      if (state.phase !== "BETTING") return state;
+      const ids = Object.keys(state.lastBets);
+      if (ids.length === 0) return state;
+
+      // Colocamos en orden, sumando sobre apuestas existentes. Si el saldo no alcanza
+      // para alguna, la salteamos sin tocar el saldo (nunca queda negativo).
+      let saldo = state.saldo;
+      let bets = state.bets;
+      let totalBet = state.totalBet;
+      let applied = 0;
+      let skipped = 0;
+
+      for (const id of ids) {
+        const amount = state.lastBets[id];
+        if (amount <= 0) continue;
+        if (saldo < amount) {
+          skipped++;
+          continue;
+        }
+        saldo -= amount;
+        totalBet += amount;
+        const existing = bets.find((b) => b.id === id);
+        if (existing) {
+          bets = bets.map((b) =>
+            b.id === id ? { ...b, amount: b.amount + amount } : b
+          );
+        } else {
+          try {
+            const def = betDef(id);
+            bets = [...bets, { id, ...def, amount }];
+          } catch {
+            skipped++;
+            continue;
+          }
+        }
+        applied++;
+      }
+
+      if (applied === 0) return state;
+
+      return {
+        ...state,
+        saldo,
+        bets,
+        totalBet,
+        message:
+          skipped > 0
+            ? `Repetiste ${applied} apuesta${applied === 1 ? "" : "s"} (${skipped} sin saldo)`
+            : `Repetiste ${applied} apuesta${applied === 1 ? "" : "s"}`,
+      };
+    }
+
+    case "DOUBLE": {
+      if (state.phase !== "BETTING" || state.bets.length === 0) return state;
+      // Si no alcanza para duplicar todo, no se aplica nada (sin romper saldo).
+      if (state.saldo < state.totalBet) return state;
+      const doubled = state.bets.map((b) => ({ ...b, amount: b.amount * 2 }));
+      return {
+        ...state,
+        saldo: state.saldo - state.totalBet,
+        bets: doubled,
+        totalBet: state.totalBet * 2,
+        message: `Dobladas tus apuestas`,
+      };
     }
 
     default:
@@ -1054,27 +1140,50 @@ export default function App() {
               className="px-5 py-2.5 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-50 font-bold border border-gray-500"
             >
               ✕ Limpiar
-            </button>
+           </button>
+            <button
+              onClick={() => dispatch({ type: "REBET" })}
+              disabled={
+                state.phase !== "BETTING" ||
+                Object.keys(state.lastBets).length === 0
+              }
+              className="px-5 py-2.5 rounded bg-indigo-700 hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed font-bold border border-indigo-500"
+              title="Repetir la última apuesta"
+            >
+              ↻ Repetir
+           </button>
+            <button
+              onClick={() => dispatch({ type: "DOUBLE" })}
+              disabled={
+                state.phase !== "BETTING" ||
+                state.bets.length === 0 ||
+                state.saldo < state.totalBet
+              }
+              className="px-5 py-2.5 rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed font-bold border border-emerald-500"
+              title="Doblar el monto de cada apuesta vigente"
+            >
+              ×2 Doblar
+           </button>
             <button
               onClick={() => dispatch({ type: "SPIN_NOW" })}
               disabled={state.phase !== "BETTING" || state.totalBet === 0}
               className="px-6 py-2.5 rounded bg-[#c1121f] hover:bg-[#9a0e19] disabled:opacity-50 disabled:cursor-not-allowed font-black tracking-wide uppercase shadow-lg"
             >
               ▶ Girar ya
-            </button>
+           </button>
             {state.phase !== "SPINNING" && (
               <button
                 onClick={() => dispatch({ type: "TOGGLE_PAUSE" })}
                 className={`px-5 py-2.5 rounded font-bold border ${
                   state.paused
                     ? "bg-yellow-600 hover:bg-yellow-500 border-yellow-400"
-                    : "bg-gray-700 hover:bg-gray-600 border-gray-500"
+                    : "bg-gray-700 hover:bg-gray-600 disabled:border-gray-500"
                 }`}
               >
                 {state.paused ? "▶ Reanudar" : "⏸ Pausar"}
-              </button>
+             </button>
             )}
-          </div>
+         </div>
 
           {/* Tabla de pagos */}
           <div className="mt-5 bg-[#141414] border border-[#2e303a] rounded p-3 min-w-[340px]">
