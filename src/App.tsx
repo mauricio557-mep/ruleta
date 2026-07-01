@@ -267,6 +267,8 @@ function useRouletteAudio() {
 /* ------------------------------------------------------------------
  * REDUCER
  * ------------------------------------------------------------------ */
+const SALDO_STORAGE_KEY = "ruleta_saldo";
+
 const initialState: State = {
   phase: "BETTING",
   saldo: CONFIG.SALDO_INICIAL,
@@ -282,6 +284,21 @@ const initialState: State = {
   message: "Apuestas abiertas",
   lastBets: {},
 };
+
+// Lazy initializer de useReducer: corre una sola vez, de forma síncrona,
+// antes del primer render. No es un side effect (no useEffect).
+function loadInitialState(): State {
+  try {
+    const raw = localStorage.getItem(SALDO_STORAGE_KEY);
+    if (raw === null) return initialState;
+    const saldo = Number(raw);
+    if (!Number.isFinite(saldo) || saldo < 0) return initialState;
+    return { ...initialState, saldo };
+  } catch {
+    // localStorage inaccesible (modo incógnito, cuota, etc.) — arrancar limpio.
+    return initialState;
+  }
+}
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -639,9 +656,18 @@ function WheelContents({ winner, pulse }: { winner: number | null; pulse?: boole
  * COMPONENTE PRINCIPAL
  * ------------------------------------------------------------------ */
 export default function App() {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(reducer, undefined, loadInitialState);
   const timersRef = useRef<number[]>([]);
   const audio = useRouletteAudio();
+
+  // Persistir saldo en localStorage en cada cambio.
+  useEffect(() => {
+    try {
+      localStorage.setItem(SALDO_STORAGE_KEY, String(state.saldo));
+    } catch {
+      // Cuota excedida / modo incógnito — no bloquear el juego por esto.
+    }
+  }, [state.saldo]);
 
   const wheelGroupRef = useRef<SVGGElement>(null);
   const ballGroupRef = useRef<SVGGElement>(null);
