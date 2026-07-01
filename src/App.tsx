@@ -775,7 +775,7 @@ export default function App() {
    * Render helpers de la mesa
    * ---------------------------------------------------------------- */
   const baseCell =
-    "relative flex items-center justify-center font-bold text-white select-none border border-[#0a4a22] md:text-sm text-xs";
+    "relative flex items-center justify-center font-bold text-white select-none border border-[#0a4a22] md:text-sm text-xs touch-manipulation";
 
   const numberCellColor = (n: number) => {
     const c = colorOf(n);
@@ -836,7 +836,7 @@ export default function App() {
         {/* Zona split horizontal derecho */}
         {!isLastCol && (
           <div
-            className="absolute right-0 top-1/2 -translate-y-1/2 w-4 md:w-5 h-full -mr-2 z-20 rounded-full hover:bg-white/20 cursor-pointer"
+            className="absolute right-0 top-1/2 -translate-y-1/2 w-5 md:w-6 h-full -mr-2.5 z-20 rounded-full hover:bg-white/20 cursor-pointer touch-manipulation"
             onClick={(e) => { e.stopPropagation(); placeBet(rightSplitId); }}
           >
             {chipSpot(rightSplitId, true)}
@@ -846,7 +846,7 @@ export default function App() {
         {/* Zona split vertical inferior o street */}
         {bottomSplitId && (
           <div
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-3 md:h-4 -mb-2 z-20 rounded-full hover:bg-white/20 cursor-pointer"
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-6 -mb-3 z-20 rounded-full hover:bg-white/20 cursor-pointer touch-manipulation"
             onClick={(e) => { e.stopPropagation(); placeBet(bottomSplitId); }}
           >
             {chipSpot(bottomSplitId, true)}
@@ -854,7 +854,7 @@ export default function App() {
         )}
         {streetId && (
           <div
-            className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-full h-3 md:h-4 z-20 rounded-full hover:bg-white/20 cursor-pointer"
+            className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-full h-6 z-20 rounded-full hover:bg-white/20 cursor-pointer touch-manipulation"
             onClick={(e) => { e.stopPropagation(); placeBet(streetId); }}
           >
             {chipSpot(streetId, true)}
@@ -864,7 +864,7 @@ export default function App() {
         {/* Esquina inferior derecha: corner o sixline */}
         {!isLastCol && (
           <div
-            className="absolute -right-2 -bottom-2 w-5 h-5 md:w-6 md:h-6 z-30 rounded-full hover:bg-white/30 cursor-pointer"
+            className="absolute -right-3 -bottom-3 w-7 h-7 md:w-8 md:h-8 z-30 rounded-full hover:bg-white/30 cursor-pointer touch-manipulation"
             onClick={(e) => {
               e.stopPropagation();
               if (cornerId) placeBet(cornerId);
@@ -886,7 +886,7 @@ export default function App() {
       return (
         <div
           key={id}
-          className="absolute right-0 w-4 md:w-5 h-8 md:h-10 z-20 -mr-2 rounded-full hover:bg-white/20 cursor-pointer"
+          className="absolute right-0 w-5 md:w-6 h-8 md:h-10 z-20 -mr-2.5 rounded-full hover:bg-white/20 cursor-pointer touch-manipulation"
           style={{ top: `${(i * 100) / 3 + 100 / 6}%`, transform: "translateY(-50%)" }}
           onClick={(e) => { e.stopPropagation(); placeBet(id); }}
         >
@@ -959,7 +959,7 @@ export default function App() {
               {/* Rueda giratoria */}
               <g
                 ref={wheelGroupRef}
-                style={{ transformOrigin: "300px 300px" }}
+                style={{ transformOrigin: "300px 300px", transformBox: "view-box" }}
               >
                 <WheelContents winner={state.winner} pulse={state.phase === "PAYOUT"} />
               </g>
@@ -967,11 +967,11 @@ export default function App() {
               {/* Bola giratoria */}
               <g
                 ref={ballGroupRef}
-                style={{ transformOrigin: "300px 300px" }}
+                style={{ transformOrigin: "300px 300px", transformBox: "view-box" }}
               >
                 <g
                   ref={ballRadiusRef}
-                  style={{ transformOrigin: "300px 300px" }}
+                  style={{ transformOrigin: "300px 300px", transformBox: "view-box" }}
                 >
                   <circle
                     cx={CX}
@@ -986,7 +986,7 @@ export default function App() {
               </g>
             </svg>
             {/* Indicador superior */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-2 w-0 h-0 border-l-8 border-r-8 border-t-12 border-l-transparent border-r-transparent border-t-[#caa84a] drop-shadow-lg" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-2 w-0 h-0 border-l-8 border-r-8 border-t-[12px] border-l-transparent border-r-transparent border-t-[#caa84a] drop-shadow-lg" />
           </div>
 
           {/* Mensaje de fase */}
@@ -1053,7 +1053,7 @@ export default function App() {
             >
               {/* Cero */}
               <div
-                className="relative col-start-1 col-end-2 row-start-1 row-end-4 bg-[#0a7d34] flex items-center justify-center font-bold text-white border border-[#0a4a22] hover:brightness-110 cursor-pointer"
+                className="relative col-start-1 col-end-2 row-start-1 row-end-4 bg-[#0a7d34] flex items-center justify-center font-bold text-white border border-[#0a4a22] hover:brightness-110 cursor-pointer touch-manipulation"
                 onClick={() => placeBet("straight-0")}
               >
                 0
